@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文章</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="css/postAndReplies.css">
+    <link rel="stylesheet" type="text/css" href="css/bar.css">
+</head>
+
+<body>
+    <div id="app" class="container">
+
+
+        <nav class="top-nav" :class="{ 'hidden': isNavHidden }">
+            <a style="text-decoration: none; font-size: 50px;" href="allPosts-google.html" class="home">ESB</a>
+            <a style="text-decoration: none;">{{this.nicknameValue}}</a>
+            <a v-if="loggedIn == false" style="text-decoration: none; cursor: pointer;" href="login.html">登入</a>
+            <a v-if="loggedIn == true" style="text-decoration: none; cursor: pointer;" @click="logout">登出</a>
+        </nav>
+
+        <div class="row justify-content-between" style="margin-top: 80px;">
+            <div class="col-auto">
+                <button class="custom-btn mt-3" @click="goToAllPostPage">回到文章列表</button>
+            </div>
+            <div class="col-auto">
+                <button v-if="loggedIn == false" class="custom-btn mt-3" @click="goToLogin">登入以回覆</button>
+                <button v-if="loggedIn == true" class="custom-btn mt-3" @click="goToCreateReplyPage">發表回覆</button>
+            </div>
+        </div>
+
+        <div v-if="post" class="post-container">
+            <!-- post區 -->
+            <div class="post-section">
+                <h2 style="font-weight: bold; font-size: 50px; float: left;">{{ post.postTitle }}</h2>
+                <div style="float: right;" v-if="forummemberIDValue == post.forummemberID">
+                    <button style="font-size: 15px;" class="delete-btn" @click="deletePost(post.postID)">刪除文章</button>
+                    <button style="font-size: 15px;" class="edit-btn" @click="goToUpdatePostPage(post.postID)">編輯文章</button>
+                </div>
+                <div class="post-time-divider" style="clear: both; font-size: 10px;">
+                    <a style="text-decoration: none;" v-bind:href="'listPosts.html?authorNickname=' + nicknameOfPostAuthor">{{nicknameOfPostAuthor}}</a> 於 {{timeP}} 發表
+                </div>
+                <!-- postContent -->
+                <div style="font-weight: bold; font-size: 30px; color: brown;" v-html="post.postContent"></div>
+                <!-- postcomments -->
+                <div class="comment-group">
+                    <div style="overflow: hidden;" class="list-group-item-comment" v-for="comment in postcomments"
+                        :key="comment.commentID">
+                        <span style="float: left; font-weight: normal; font-size: 15px; color: black;">
+                            <a style="text-decoration: none;" v-bind:href="'listPosts.html?authorNickname=' + comment.authorNickname">{{comment.authorNickname}}</a>  {{ comment.commentContent}}</span>
+                        <button style="float: right;" class="delete-btnComm" @click="deletePostComment(comment.commentID)" v-if="nicknameValue == comment.authorNickname">刪除留言</button>
+                        <div class="reply-time-divider" style="clear: both; font-size: 10px; color: rgb(117, 117, 117);">{{formatDateTime(comment.commentTime)}}</div>
+                    </div>
+                </div>
+                
+                <!--對文章進行留言-->
+                <div v-if="loggedIn == true" class="input-group mt-2">
+                    <input type="text" class="form-control custom-input" placeholder="輸入你的留言"v-model="newPostCommentText[post.postID]">
+                    <button class="custom-btn" @click="addPostComment(post.postID)">送出</button>
+                </div>
+            </div>
+        
+            <!-- replies區 -->
+            <div class="reply-section">
+                <div class="reply-group" v-for="reply in replies" :key="reply.replyID" :id="reply.replyID">
+                    
+
+                    <div style="float: left;">【RE】</div>
+                    <div style="float: right;" v-if="nicknameValue == reply.authorNickname">
+                        <button style="font-size: 15px;" class="delete-btn" @click="deleteReply(reply.replyID)">刪除回覆</button>
+                        <button style="font-size: 15px;" class="edit-btn" @click="goToUpdateReplyPage(reply.replyID)">編輯回覆</button>
+                    </div>
+                    <div class="reply-time-divider" style="clear: both; font-size: 10px;">
+                        <a style="text-decoration: none;" v-bind:href="'listPosts.html?authorNickname=' + reply.authorNickname">{{reply.authorNickname}}</a> 於 {{formatDateTime(reply.replyTime)}} 發表</div>
+                    <!-- replyContent -->
+                    <div class="list-group-item" style="font-weight: bold;font-size: 30px; color: brown;" v-html="reply.replyContent"></div>
+                    
+                    <!-- replycomments -->
+                    <div class="comment-group">
+                        <div style="font-weight: normal; font-size: 15px; color:black; overflow: hidden;" class="list-group-item-comment" v-for="comment in reply.comments" :key="comment.commentID">
+                            <span style="float: left;">
+                                <a style="text-decoration: none;" v-bind:href="'listPosts.html?authorNickname=' + comment.authorNickname">{{comment.authorNickname}}</a>  {{ comment.commentContent }}</span>
+                            <button style="float: right;" class="delete-btnComm" @click="deleteReplyComment(comment.commentID)" v-if="nicknameValue == comment.authorNickname">刪除留言</button>
+                            <div class="reply-time-divider" style="clear: both; font-size: 10px; color: rgb(117, 117, 117);">{{formatDateTime(comment.commentTime)}}</div>
+                        </div>
+                    </div>
+                    <!--對回覆進行留言-->
+                    <div v-if="loggedIn == true" class="input-group mt-2">
+                        <input type="text" class="form-control custom-input" placeholder="輸入你的留言" v-model="newReplyCommentText[reply.replyID]">
+                        <button class="custom-btn" @click="addReplyComment(reply.replyID)">送出</button>
+                    </div>
+                    
+
+                </div>
+            </div>
+        </div>
+        
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.2.43/dist/vue.global.min.js"></script>
+
+    <script>
+        const app = Vue.createApp({
+            data() {
+                return {
+                    isNavHidden: false, // 初始化為 false，顯示導航bar欄
+                    post: [],
+                    postcomments: [],
+                    replies: [],
+                    //replycomments: [],
+                    newPostCommentText: {}, // 新增一個物件來儲存輸入框的值，以文章的ID作為鍵
+                    newReplyCommentText: {}, // 新增一個物件來儲存輸入框的值，以回覆的ID作為鍵
+                    forummemberIDValue: '',
+                    nicknameOfPostAuthor: '',
+                    //nicknameOfReplyAuthor: '',
+                    nicknameValue: '',
+                    forummemberIDValue: '',
+                    timeP: '',                 
+                    commentTime: '',
+                    loggedIn: false,
+                };
+            },
+            mounted() {
+                window.addEventListener('scroll', this.handleScroll); // 監聽頁面的滾動事件
+                const nicknameCookie = this.getCookie('sessionNickname');
+                const forummemberIDCookie = this.getCookie('sessionForummemberID');
+                if (nicknameCookie && forummemberIDCookie) {
+                    this.loggedIn = true;
+                }
+                const postID = getUrlParameter("postID");
+                axios.get(`http://localhost:8083/forum/posts/${postID}`)
+                    .then(response01 => {
+                        //console.log("response01=", response01)
+                        this.post = response01.data;
+                        //this.nicknameOfPostAuthor = this.getNickname(this.post.forummemberID);
+                        //console.log("this.post.forummemberID", this.post.forummemberID)
+                        //console.log("this.nicknameOfPostAuthor", (this.nicknameOfPostAuthor))
+                        this.getNickname(this.post.forummemberID) // 呼叫 getNickname 方法取得暱稱
+                            .then(nickname => {
+                                this.nicknameOfPostAuthor = nickname; // 將暱稱設定給 nicknameOfPostAuthor
+                            })
+                            .catch(error => {
+                                console.error('取得暱稱失敗:', error);
+                            });
+                        this.postcomments = response01.data.comments;
+                        // 遍歷留言，並取得留言作者暱稱
+                        this.postcomments.forEach(comment => {
+                            this.getNickname(comment.forummemberID) // 取得留言作者暱稱
+                            .then(nickname => {
+                                comment.authorNickname = nickname; // 將留言作者暱稱設定給 comment.authorNickname
+                            })
+                            .catch(error => {
+                                console.error('取得留言作者暱稱失敗:', error);
+                            });
+                        });
+                        this.timeP = this.formatDateTime(this.post.postTime);
+                        //
+                        this.nicknameValue = this.getCookieValue('sessionNickname');
+                        this.forummemberIDValue = this.getCookieValue('sessionForummemberID');
+                        //console.log('Nickname:', this.nicknameValue);
+                        //console.log('ForummemberID:', this.forummemberIDValue);                       
+                    });
+                axios.get(`http://localhost:8083/forum/post=${postID}/replies`)
+                    .then(response02 => {
+                        this.replies = response02.data;
+                        //console.log("response02=", response02)
+                        //this.replycomments = response02.data[0].comments;
+                        // 在取得回覆資料後，遍歷回覆並獲取回覆作者的暱稱
+                        /*this.replies.forEach(reply => {
+                            this.nicknameOfReplyAuthor = this.getNicknameOfReplyAuthor(reply.authorID);
+                        });*/
+                        this.replies.forEach(reply => {
+                            this.getNickname(reply.forummemberID) // 取得回覆作者暱稱
+                                .then(nickname => {
+                                    reply.authorNickname = nickname; // 將回覆作者暱稱設定給 reply.authorNickname
+                                })
+                                .catch(error => {
+                                    console.error('取得回覆作者暱稱失敗:', error);
+                                });
+                            // 遍歷每個回覆中的留言列表
+                            reply.comments.forEach(comment => {
+                                // 取得留言作者的暱稱
+                                this.getNickname(comment.forummemberID)
+                                    .then(nickname => {
+                                        comment.authorNickname = nickname; // 將留言作者暱稱設定給 comment.authorNickname
+                                    })
+                                    .catch(error => {
+                                        console.error('取得留言作者暱稱失敗:', error);
+                                    });
+                            });
+                        });
+                        this.$nextTick(() => {
+                            const replyID = getUrlParameter("replyID");
+                            //console.log(replyID);
+                            const element = document.getElementById(replyID);
+                            //console.log(element);
+                            if (element) {
+                                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                        });
+                    });
+                /*axios.get(`/forum/forummembers/${forummemberID}`)
+                    .then(response03 => {
+                        console.log("response02=", response03)
+                    });*/
+            },
+            methods: {
+                goToLogin() {
+                    window.location.href = "login.html"
+                },
+                formatDateTime(xxx) {
+                    var formattedDateTime = new Date(xxx).toLocaleString("zh-TW", {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                        minute: "2-digit",
+                        hour: "2-digit",
+                        second: "2-digit",
+                        hour12: true
+                    });
+                    return formattedDateTime;
+                },
+                /*getNicknameOfPostAuthor(xxx) {
+                    axios.get(`/forum/forummembers/${xxx}`)
+                    .then(responsePost => {
+                        console.log("responsePost=", responsePost);
+                        //this.nicknameOfPostAuthor = responsePost.data.nickname;
+                    });
+                },*/
+                getNickname(xxx) {
+                    return axios.get(`http://localhost:8083/forum/forummembers/nicknameOf/${xxx}`)
+                        .then(responseRRR => {
+                            //console.log("responseRRR.data:", responseRRR.data)
+                            return responseRRR.data;
+                        })
+                        .catch(error => {
+                            console.error('作者ID找nickname失敗:', error);
+                        });
+                },
+                getCookieValue(cookieName) {
+                    // 獲取所有的 Cookie (所謂一個是: sessionNickname=Yoro)
+                    var cookies = document.cookie.split(';');
+                    // 遍歷每個 Cookie
+                    for (var i = 0; i < cookies.length; i++) {
+                        var cookie = cookies[i].trim();
+                        // 如果找到了目標名稱的 Cookie 
+                        if (cookie.startsWith(cookieName + '=')) {
+                            return cookie.substring(cookieName.length + 1);// 提取並返回該 Cookie 的值
+                        }
+                    }
+                    return '';// 如果未找到對應的 Cookie，返回空字符串或者其他指定的值
+                },
+                handleScroll() { // 監聽滾動事件的方法
+                    const scrollY = window.scrollY; // 獲取頁面的垂直滾動距離
+                    // 如果滾動距離超過某個閾值，則隱藏導航欄，否則顯示導航欄
+                    this.isNavHidden = scrollY > 80; // 這裡的閾值可以根據實際情況調整
+                },
+                goToAllPostPage() {
+                    window.location.href = "allPosts-google.html";
+                },
+                goToUpdatePostPage(postID) {
+                    window.location.href = `posttest-update00-vue-main.html?postID=${postID}`;
+                },
+                goToCreateReplyPage() {
+                    const postID = getUrlParameter("postID");
+                    window.location.href = `repliestest00-vue-main.html?postID=${postID}`;
+                },
+                goToUpdateReplyPage(replyID) {
+                    window.location.href = `repliestest-update00-vue-main.html?replyID=${replyID}`;
+                },
+                addPostComment(postID) {
+                    const commentContent = this.newPostCommentText[postID];
+                    console.log(`新增對文章${postID}的留言: ${commentContent}`);
+                    const comment = {
+                        postID: postID,
+                        commentContent: commentContent,
+                        fnickname: this.getCookieValue('sessionNickname')
+                    };
+                    axios.post('http://localhost:8083/forum/postandreply/comments', comment)
+                        .then(response => {
+                            //console.log('對文章評論成功添加:', response.data);
+                            //console.log('對文章評論成功添加:', comment);
+                            // 在前端評論列表中新增新評論
+                            this.postcomments.push(response.data);
+                            this.newPostCommentText[postID] = '';// 清空輸入框
+                        })
+                        .catch(error => {
+                            console.error('對文章評論添加失敗:', error);
+                        });
+                },
+                addReplyComment(replyID) {
+                    const commentContent = this.newReplyCommentText[replyID];
+                    //console.log(`新增對回覆${replyID}的留言: ${commentContent}`);
+                    const comment = {
+                        replyID: replyID, // 回覆的ID
+                        commentContent: commentContent, // 留言的內容
+                        fnickname: this.getCookieValue('sessionNickname'),
+                    };
+                    axios.post('http://localhost:8083/forum/postandreply/comments', comment)
+                        .then(response => {
+                            console.log('對回覆評論成功添加:', response.data);
+                            console.log('對回覆評論成功添加:', comment);
+                            // 將新留言加入到相應的回覆中
+                            const newComment = {
+                                commentID: response.data.commentID, // 假設後端返回了新留言的ID
+                                commentContent: commentContent,
+                                authorNickname: response.data.authorNickname,
+                                commentTime: Date(response.data.commentTime).toLocaleString("zh-TW", {
+                                    year: "numeric",
+                                    month: "2-digit",
+                                    day: "2-digit",
+                                    minute: "2-digit",
+                                    hour: "2-digit",
+                                    second: "2-digit",
+                                    hour12: true
+                                })
+                            };
+                            const replyIndex = this.replies.findIndex(reply => reply.replyID === replyID);
+                            this.replies[replyIndex].comments.push(newComment);
+                            this.newReplyCommentText[replyID] = '';// 清空輸入框
+                            this.$forceUpdate();
+                        })
+                        .catch(error => {
+                            console.error('對回覆評論添加失敗:', error);
+                        });
+                },
+                deletePost(postID) {
+                    console.log(`刪除文章 ${postID}`);
+                    axios.delete(`http://localhost:8083/forum/posts/${postID}`)
+                        .then(response => {
+                            console.log('刪除文章成功:', response.data);
+                            // 這裡可以從前端列表中刪除相應的文章
+                            this.post = null; // 清空目前的文章資料
+                            /*const index = this.post.findIndex(post => post.postID === postID);
+                            if (index !== -1) {
+                                this.post.splice(index, 1);
+                            }*/
+                        })
+                        .catch(error => {
+                            console.error('刪除文章失敗:', error);
+                        });
+                },
+                deleteReply(replyID) {
+                    console.log(`刪除回覆 ${replyID}`);
+                    axios.delete(`http://localhost:8083/forum/replies/${replyID}`)
+                        .then(response => { 
+                            console.log('刪除回覆成功:', response.data);
+                            // 這裡可以從前端列表中刪除相應的回覆
+                            const index = this.replies.findIndex(reply => reply.replyID === replyID);
+                            if (index !== -1) {
+                                this.replies.splice(index, 1);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('刪除回覆失敗:', error);
+                        });
+                },
+                deletePostComment(commentID) {
+                    console.log(`刪除文章評論${commentID}的評論`);
+                    axios.delete(`http://localhost:8083/forum/postandreply/comments/${commentID}`)
+                        .then(response => {
+                            console.log('刪除文章評論成功:', response.data);
+                            // 這裡可以更新前端的評論列表，刪除相應的評論
+                            const index = this.postcomments.findIndex(comment => comment.commentID === commentID);
+                            if (index !== -1) {
+                                this.postcomments.splice(index, 1);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('刪除文章評論失敗:', error);
+                        });
+                },
+                deleteReplyComment(commentID) {
+                    console.log(`刪除回覆評論${commentID}的評論`);
+                    axios.delete(`http://localhost:8083/forum/postandreply/comments/${commentID}`)
+                        .then(response => {
+                            console.log('刪除回覆評論成功:', response.data);
+                            // 這裡可以更新前端的評論列表，刪除相應的評論
+                            for (const reply of this.replies) {
+                                if (reply.comments) {
+                                    const index = reply.comments.findIndex(comment => comment.commentID === commentID); //v-for="comment in reply.comments" 
+                                    if (index !== -1) {
+                                        reply.comments.splice(index, 1);
+                                    }
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            console.error('刪除回覆評論失敗:', error);
+                        });
+                },
+                /*scrollToReply(replyID) {
+                    console.log(document.getElementById(replyID))
+                    
+                },*/
+                getCookie(name) {
+                    const value = `; ${document.cookie}`;
+                    const parts = value.split(`; ${name}=`);
+                    if (parts.length === 2) return parts.pop().split(';').shift();
+                },
+                logout() {
+                    // 清除相關的 Cookie
+                    document.cookie = 'sessionNickname=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                    document.cookie = 'sessionForummemberID=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                    window.location.href = "allPosts-google.html"; 
+                },
+            }
+        });
+        app.mount("#app");
+
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            const regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            const results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+    </script>
+</body>
+
+</html>

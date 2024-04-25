@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>註冊</title>
+
+    <!-- Bootstrap 4 CDN -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+        integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+
+    <!-- Fontawesome CDN -->
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/all.css"
+        integrity="sha384-mzrmE5qonljUremFsqc01SB46JvROS7bZs3IO2EmfFsd15uHvIt+Y8vEf7N7fWAU" crossorigin="anonymous">
+
+    <!-- Custom styles -->
+    <link rel="stylesheet" type="text/css" href="css/register.css">
+</head>
+
+<body background="image/backgroundfff.png">
+    <div id="app" class="container">
+        <div class="d-flex justify-content-center h-100">
+            <div class="card">
+                <div class="card-header">
+                    <h3>註冊</h3>
+                </div>
+                <div class="card-body">
+                    <form @submit.prevent="register">
+
+                        <div class="input-group form-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-user"></i></span>
+                            </div>
+                            <input type="text" class="form-control" placeholder="姓名" v-model="userName" @keyup="validateUserName">
+                        </div>
+                        <div class="form-group">
+                            <div v-if="!isUserNameValid" class="text-danger small" style="margin-top: 5px;">2-10字中文，不含特殊符號</div>
+                            <div v-else-if="isUserNameValid" class="text-success small">姓名格式正確</div>
+                        </div>
+
+                        <div class="input-group form-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-user"></i></span>
+                            </div>
+                            <input type="text" class="form-control" placeholder="暱稱" v-model="fnickname" @keyup="validateFnickname">
+                        </div>
+                        <div class="form-group">
+                            <div v-if="!isFnicknameValid" class="text-danger small" style="margin-top: 5px;">4-10字元，需包含英文和數字，不可含特殊符號</div>
+                            <div v-else-if="isFnicknameValid" class="text-success small">暱稱格式正確</div>
+                        </div>
+
+                        <div class="input-group form-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                            </div>
+                            <input type="email" class="form-control" placeholder="電子郵件" v-model="email" @keyup="validateEmail">
+                        </div>
+                        <div class="form-group">
+                            <div v-if="!isEmailValid" class="text-danger small" style="margin-top: 5px;">範例：abc123@example.com</div>
+                            <div v-else-if="isEmailValid" class="text-success small">電子郵件格式正確</div>
+                        </div>
+
+                        <div class="input-group form-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                            </div>
+                            <input type="text" class="form-control" placeholder="手機號碼" v-model="phoneNumber" @keyup="validatePhoneNumber">
+                        </div>
+                        <div class="form-group">
+                            <div v-if="!isPhoneNumberValid" class="text-danger small" style="margin-top: 5px;">手機號碼10碼(範例：0922333444)</div>
+                            <div v-else-if="isPhoneNumberValid" class="text-success small">手機號碼格式正確</div>
+                        </div>
+
+                        <div class="input-group form-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-key"></i></span>
+                            </div>
+                            <input type="password" class="form-control" placeholder="請輸入密碼" v-model="fpassword" @keyup="validateFpassword">
+                        </div>
+                        <div class="form-group">
+                            <div v-if="!isFpasswordValid" class="text-danger small" style="margin-top: 5px;"> 8-12 個字元，且需包含英文、數字、特殊符號(!@#$.%^&*)</div>
+                            <div v-else-if="isFpasswordValid" class="text-success small">密碼格式正確</div>
+                        </div>
+
+                        <div class="form-group">
+                            <input type="submit" value="註冊" class="btn float-right login_btn">
+                        </div>
+
+                    </form>
+                </div>
+
+                <div class="card-footer">
+                    <div class="d-flex justify-content-center links">
+                        已經有帳號了嗎？
+                        <a style="color: darksalmon;" href="login.html">返回登入</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vue, Axios, and SweetAlert2 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.2.43/dist/vue.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        const app = Vue.createApp({
+            data() {
+                return {
+                    userName: '',
+                    fnickname: '',
+                    email: '',
+                    phoneNumber: '',
+                    fpassword: '',
+                    //
+                    isUserNameValid: false,
+                    isFnicknameValid: false,
+                    isEmailValid: false,
+                    isPhoneNumberValid: false,
+                    isFpasswordValid: false,
+                };
+            },
+            computed: {
+                isFormValid() {
+                    return this.isUserNameValid && this.isFnicknameValid && this.isEmailValid && this.isPhoneNumberValid && this.isFpasswordValid;
+                }
+            },
+            methods: {
+                register() {
+                    var formData = {
+                        userName: this.userName,
+                        fnickname: this.fnickname,
+                        email: this.email,
+                        phoneNumber: this.phoneNumber,
+                        fpassword: this.fpassword
+                    };
+                    axios.post('http://localhost:8083/forum/register', formData)
+                        .then(response => {
+                            // 註冊成功，可自行處理相應邏輯
+                            Swal.fire({
+                                title: 'GOOD!',
+                                text: '註冊成功',
+                                icon: 'success',
+                                allowOutsideClick: false,
+                                confirmButtonText: '確認',
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    console.log('response:', response);
+                                    // 跳轉至登入頁面
+                                    window.location.href = "login.html";
+                                }
+                            })
+                        })
+                        .catch(error => {
+                            // 處理錯誤
+                            console.error('Error registering:', error);
+                            // 提示註冊失敗
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'OOPS!',
+                                text: '資料輸入錯誤',
+                                allowOutsideClick: false,
+                                confirmButtonText: '確認',
+                            })
+                        });
+                },
+                validateUserName() {
+                    this.isUserNameValid = /^[\u4E00-\u9FA5]{2,10}$/.test(this.userName);
+                },
+                validateFnickname() {
+                    this.isFnicknameValid = /^(?=.*[a-zA-Z])(?=.*[0-9])[a-zA-Z0-9]{4,10}$/.test(this.fnickname);
+                },
+                validateEmail() {
+                    this.isEmailValid = /^\w+((-\w+)|(\.\w+))*\@[A-Za-z0-9]+((\.|-)[A-Za-z0-9]+)*\.[A-Za-z]+$/.test(this.email);
+                },
+                validatePhoneNumber() {
+                    this.isPhoneNumberValid = /^\d{10}$/.test(this.phoneNumber);
+                },
+                validateFpassword() {
+                    this.isFpasswordValid = /^(?=.*[0-9])(?=.*[a-zA-Z])(?=.*[!@#$.\%\^\&\*\(\)])[0-9a-zA-Z!@#$.\%\^\&\*\(\)]{8,12}/.test(this.fpassword);
+                    
+                },
+                
+            }
+        });
+        app.mount("#app");
+    </script>
+
+</body>
+
+</html>
